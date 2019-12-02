@@ -7,9 +7,9 @@ def main():
     # =====================================================================
 
     train_dict = lib.load2dict(dataset='train', save=False)
-    val_dict = lib.load2dict(dataset='val', save=False)
-
-    lib.plot_patches(train_dict, max_iter=10)
+    # val_dict = lib.load2dict(dataset='val', save=False)
+    train_dict = lib.remove_small_bbx(train_dict, 200, debug=False)
+    lib.plot_patches(train_dict, max_iter=10, event='all')
 
     # =====================================================================
     #                           PREPROCESSING
