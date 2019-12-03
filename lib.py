@@ -2,12 +2,11 @@ import pickle
 from scipy.io import loadmat
 from itertools import chain
 
-import matplotlib.patches as patches
 from PIL import Image
 import numpy as np
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-from itertools import filterfalse
+import matplotlib.patches as patches
 
 
 labels_keys = (['__header__', '__version__', '__globals__',  # Attributes
@@ -24,6 +23,12 @@ labels_keys = (['__header__', '__version__', '__globals__',  # Attributes
 
 
 def load2dict(dataset, save=False):
+    """
+    Load input dataset to dictionary
+    :param dataset:
+    :param save: whether to save the dictionary to pickle file
+    :return: list of dictionaries --> keys: int = 'id', str = 'path', int = 'n_faces', list of dictionaries = 'labels'{'box, 'confidence'}
+    """
     print("Generating " + str(dataset) + " dictionary...")
     face_split = loadmat('input/wider_face_split/wider_face_' + str(dataset) + '.mat')
     event_list = list(chain.from_iterable(face_split['event_list']))
@@ -38,12 +43,13 @@ def load2dict(dataset, save=False):
             name = ''.join(str(el) for el in file_list[i][j])
             name = name[2:len(name) - 2]
             path = './input/WIDER_' + str(dataset) + '/images/' + str(event) + '/' + str(name) + '.jpg'
-            # image = mpimg.imread(path)
+            # image = cv2.imread(path)
             box = [np.array(bbx) for bbx in face_bbx_list[i][j]]
             box = list(box[0])
-            n_faces = len(box)
-            data_dict.append(
-                {'id': count, 'event': event, 'name': name, 'path': path, 'n_faces': n_faces, 'box': box})
+            label_dict = [{'box': bbx, 'confidence': 1.0} for bbx in box]
+
+            n_faces = len(label_dict)
+            data_dict.append({'id': count, 'event': event, 'path': path, 'n_faces': n_faces, 'labels': label_dict})
             count += 1
 
     if save:
@@ -53,33 +59,39 @@ def load2dict(dataset, save=False):
     return data_dict
 
 
-def plot_patches(data_dict, event='all', max_iter=None):
+def plot_box(image, labels, color='r', debug=False, show=True):
+    fig, ax = plt.subplots()
+    ax.imshow(image)
+    for n in range(len(labels)):
+        print(labels) if debug else None
+        x, y, w, h = labels[n]['box']
+        rect = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor=color, facecolor='none')
+        ax.add_patch(rect)
+    plt.show() if show else None
+
+
+def plot_box_from_dict(data_dict, event='all', max_iter=None):
     for i, d in enumerate(data_dict):
         if (d['event'] == str(event)) or (str(event) == 'all'):
-            img = Image.open(d['path'])
-            print("Path:", d['path'], "\t\tSize:", img.size)
-            fig, ax = plt.subplots()
-            ax.imshow(img)
-            for n in range(d['n_faces']):
-                x, y, w, h = d['box'][n]
-                rect = patches.Rectangle((x, y), w, h, linewidth=1, edgecolor='r', facecolor='none')
-                ax.add_patch(rect)
-            plt.show()
+            image = Image.open(d['path'])
+            print("Path:", d['path'], "\t\tSize:", image.size)
+            plot_box(image, d['labels'])
             if i == max_iter - 1:
                 break
 
 
-def remove_small_bbx(data_dict, box_size, debug=False):
+def filter_small_bbx(data_dict, box_size, debug=False):
     print("Removing boxes with size < {}".format(box_size))
     clean = 0
     for d in data_dict:
         print("Path: ", d['path']) if debug else None
         print("Before: ", d['n_faces']) if debug else None
-        d['box'] = [np.array(box) for box in d['box'] if (box[2]*box[3]) > box_size]
-        d['n_faces'] = len(d['box'])
+        d['labels'] = [label for label in d['labels'] if (label['box'][2]*label['box'][3]) > box_size]
+        d['n_faces'] = len(d['labels'])
         print("After: ", d['n_faces']) if debug else None
         if d['n_faces'] == 0:
             clean = 1
+
     if clean:
         print("Found images with no labels. Removing them...")
         init_len = len(data_dict)
@@ -87,5 +99,8 @@ def remove_small_bbx(data_dict, box_size, debug=False):
         print("Removed images:", init_len-len(data_dict))
 
     return data_dict
+
+
+
 
 
