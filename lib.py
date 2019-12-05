@@ -122,13 +122,19 @@ def plot_box_from_dict(data_dict, event='all', max_iter=None):
 #                                               PREPROCESSING
 # ======================================================================================================================
 
+def too_many_faces(data_dict, n_faces):
+    data_dict = [d for d in data_dict if d['n_faces']<n_faces+1]
+    print('remained images', len(data_dict))
+    return data_dict
+
 def filter_box(data_dict, box_size, debug=False):
     print("Removing boxes with size < {}".format(box_size))
     clean = 0
     for d in data_dict:
+        m_dim = np.amax(d['shape'])
         print("Path: ", d['h5_path']) if debug else None
         print("Before: ", d['n_faces']) if debug else None
-        d['labels'] = [label for label in d['labels'] if (label['box'][2]*label['box'][3]) > box_size]
+        d['labels'] = [label for label in d['labels'] if (label['box'][2]*label['box'][3]) > box_size * m_dim / 250]
         d['n_faces'] = len(d['labels'])
         print("After: ", d['n_faces']) if debug else None
         if d['n_faces'] == 0:
@@ -257,10 +263,6 @@ def bb_intersection_over_union(boxA, boxB):
     # areas - the interesection area
     iou = interArea / float(boxAArea + boxBArea - interArea)
 
-    if xA==boxA[0] and yA==boxA[1] and xB==boxA[0]+boxA[2] and yB==boxA[1]+boxA[3]:
-        iou = 0.51
-    if xA==boxB[0] and yA==boxB[1] and xB==boxB[0]+boxB[2] and yB==boxB[1]+boxB[3]:
-        iou = 0.51
     if interArea / boxAArea > 0.5 or interArea / boxBArea > 0.5:
         iou = 0.51
 
@@ -281,6 +283,13 @@ def face_metric2(result, expected, factor, height, width):
     acc = overlap / tot
     #print(acc)
     return acc
+
+def face_metric3(result, expected, result_matrix):
+    if len(result) > 10:
+        result_matrix[10, int(len(expected))] += 1
+        return result_matrix
+    result_matrix[int(len(result)), int(len(expected))] += 1
+    return result_matrix
 
 def face_metric(result, expected, factor, h, w):
     #print(result)
@@ -323,7 +332,7 @@ def clean_result(result):
                 pos = i
         if overlap > 0.4 and single_box['confidence'] > cleaned_result[pos]['confidence']:
             cleaned_result[pos] = [single_box]
-        elif overlap < 0.4 and single_box['confidence'] > 0.8:
+        elif overlap < 0.4 and single_box['confidence'] > 0.4:
             cleaned_result += [single_box]
             count += 1
     return cleaned_result

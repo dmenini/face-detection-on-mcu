@@ -47,7 +47,9 @@ def main():
     val_dict = [img for img in val_dict if img['shape'][0] <= h_cut]
 
     train_dict = filter_box(train_dict, 1000, debug=False)
-    #val_dict = filter_box(val_dict, 400, debug=False)
+    #val_dict = filter_box(val_dict, 140, debug=False)
+    val_dict = too_many_faces(val_dict, 7)
+    val_dict = filter_box(val_dict, 400, debug=False)
 
     #lib.plot_box_from_dict(train_dict, max_iter=5, event='all')
 
@@ -59,17 +61,30 @@ def main():
     print("Final val images: ", len(val_dict))
 
     acc = []
+    result_matrix = np.zeros((11, 11))
     detector = MTCNN(min_face_size=12, scale_factor=0.36)
-    for i in range(0,len(val_dict)):
+    for i in range(0,len(val_dict[:])):
+        expected = val_dict[i]['labels']
+        if len(expected)>7 or len(expected)==0:
+            continue
         image = hdf5_load(val_dict[i]['h5_path'])
+        #image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         image1, factor = downscale(image)
+        #factor = 1
         result = detector.detect_faces(image1)
         result = clean_result(result)
-        expected = val_dict[i]['labels']
+        #expected = val_dict[i]['labels']
+        result_matrix = face_metric3(result, expected, result_matrix)
         acc.append(face_metric1(result, expected, factor, image1.shape[0], image1.shape[1]))
         #plot_box(image1, result, color='cyan', debug=False, show=False)
         #plot_box(image, expected, color='r', debug=False)
     print(np.mean(np.array(acc)))
+    result_matrix = result_matrix / np.tile((np.sum(result_matrix, axis=0).astype(float)+0.001), (11, 1))
+    #print(result_matrix)
+    import seaborn as sn
+    sn.heatmap(result_matrix, annot=True)
+    #plt.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":
