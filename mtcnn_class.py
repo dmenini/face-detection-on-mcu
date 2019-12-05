@@ -33,12 +33,12 @@ import cv2
 import numpy as np
 import pkg_resources
 
-from mtcnn_network.exceptions import InvalidImage
-from mtcnn_network.network.factory import NetworkFactory
+
+from factory import *
 
 
-__author__ = "Iván de Paz Centeno"
-
+class InvalidImage(Exception):
+    pass
 
 class StageStatus(object):
     """
@@ -293,7 +293,7 @@ class MTCNN(object):
 
         scales = self.__compute_scale_pyramid(m, min_layer)
 
-        stages = [self.__stage1, self.__stage2, self.__stage3]
+        stages = [self.__stage1, self.__stage2]
         result = [scales, stage_status]
 
         # We pipe here each of the stages
@@ -304,18 +304,18 @@ class MTCNN(object):
 
         bounding_boxes = []
 
-        for bounding_box, keypoints in zip(total_boxes, points.T):
+        for bounding_box in total_boxes:
             bounding_boxes.append({
                 'box': [int(bounding_box[0]), int(bounding_box[1]),
                         int(bounding_box[2] - bounding_box[0]), int(bounding_box[3] - bounding_box[1])],
-                'confidence': bounding_box[-1],
-                'keypoints': {
-                    'left_eye': (int(keypoints[0]), int(keypoints[5])),
-                    'right_eye': (int(keypoints[1]), int(keypoints[6])),
-                    'nose': (int(keypoints[2]), int(keypoints[7])),
-                    'mouth_left': (int(keypoints[3]), int(keypoints[8])),
-                    'mouth_right': (int(keypoints[4]), int(keypoints[9])),
-                }
+                'confidence': bounding_box[-1]
+                #'keypoints': {
+                #    'left_eye': (int(keypoints[0]), int(keypoints[5])),
+                #    'right_eye': (int(keypoints[1]), int(keypoints[6])),
+                #    'nose': (int(keypoints[2]), int(keypoints[7])),
+                #    'mouth_left': (int(keypoints[3]), int(keypoints[8])),
+                #    'mouth_right': (int(keypoints[4]), int(keypoints[9])),
+                #}
             }
             )
 
