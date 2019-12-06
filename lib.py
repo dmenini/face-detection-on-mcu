@@ -26,11 +26,12 @@ labels_keys = (['__header__', '__version__', '__globals__',  # Attributes
 #                                               DATASET MANAGEMENT
 # ======================================================================================================================
 
+
 def hdf5_store(image, path):
     # Create a new HDF5 file
     f = h5py.File(path, "w")
     # Create a dataset in the file
-    data_set = f.create_dataset("image", np.shape(image), h5py.h5t.STD_U8BE, data=image)
+    f.create_dataset("image", np.shape(image), h5py.h5t.STD_U8BE, data=image)
     f.close()
 
 
@@ -98,6 +99,7 @@ def initialize(dataset, keep_all=True):
 #                                                   PLOTS
 # ======================================================================================================================
 
+
 def plot_box(image, labels, color='r', debug=False, show=True):
     fig, ax = plt.subplots()
     ax.imshow(image)
@@ -122,10 +124,12 @@ def plot_box_from_dict(data_dict, event='all', max_iter=None):
 #                                               PREPROCESSING
 # ======================================================================================================================
 
+
 def too_many_faces(data_dict, n_faces):
     data_dict = [d for d in data_dict if d['n_faces']<n_faces+1]
     print('remained images', len(data_dict))
     return data_dict
+
 
 def filter_box(data_dict, box_size, debug=False):
     print("Removing boxes with size < {}".format(box_size))
@@ -156,6 +160,7 @@ def heights_description(data_dict):
     print(pd.Series(heights).describe(percentiles=[.05, .25, .5, .75, .80, .85, .90, .95]))  # Series is the type!
     return heights
 
+
 def downscale(image):
     h, w, _ = image.shape
     max_size = 250
@@ -167,6 +172,7 @@ def downscale(image):
     else:
         image = cv2.resize(image, (int(max_size*factor), max_size))
     return image, rescaling_factor
+
 
 def bb_intersection_over_union1(boxA, boxB):
     # determine the (x, y)-coordinates of the intersection rectangle
@@ -234,14 +240,15 @@ def face_metric1(result, expected, factor, height, width):
     tot += np.count_nonzero(temp==1)
     try:
         acc = (f_overlap + overlap) / (f_overlap + tot)
-        #acc = (summing + count * acc) / (summing + count)
+        # acc = (summing + count * acc) / (summing + count)
     except:
-        if overlap==0:
+        if overlap == 0:
             acc = 1
         else:
             acc = 0
-    #print(acc)
+
     return acc
+
 
 def bb_intersection_over_union(boxA, boxB):
     # determine the (x, y)-coordinates of the intersection rectangle
@@ -253,36 +260,19 @@ def bb_intersection_over_union(boxA, boxB):
     # compute the area of intersection rectangle
     interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
 
-    # compute the area of both the prediction and ground-truth
-    # rectangles
+    # compute the area of both the prediction and ground-truth rectangles
     boxAArea = (boxA[2] + 1) * (boxA[3] + 1)
     boxBArea = (boxB[2] + 1) * (boxB[3] + 1)
 
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
+    # compute the intersection over union by taking the intersection area and dividing it
+    # by the sum of prediction + ground-truth areas - the intersection area
     iou = interArea / float(boxAArea + boxBArea - interArea)
 
     if interArea / boxAArea > 0.5 or interArea / boxBArea > 0.5:
         iou = 0.51
 
-    # return the intersection over union value
     return iou
 
-def face_metric2(result, expected, factor, height, width):
-    r_boxes = np.array([np.array(r['box']) for r in result])
-    e_boxes = np.array([np.array(e['box']) for e in expected])
-    overlap = 0
-    for pre in r_boxes:
-        temp = 0
-        for exp in e_boxes:
-            if bb_intersection_over_union(pre, exp/factor) > 0:
-                temp=1
-        overlap += temp
-    tot = e_boxes.shape[0]
-    acc = overlap / tot
-    #print(acc)
-    return acc
 
 def face_metric3(result, expected, result_matrix):
     if len(result) > 10:
@@ -291,39 +281,13 @@ def face_metric3(result, expected, result_matrix):
     result_matrix[int(len(result)), int(len(expected))] += 1
     return result_matrix
 
-def face_metric(result, expected, factor, h, w):
-    #print(result)
-    r_boxes = np.array([np.array(r['box']) for r in result])
-    e_boxes = np.array([np.array(e['box']) for e in expected])
-    #print(r_boxes.shape)
-    tempr = np.zeros((2, 4))
-    tempe = np.zeros((2, 4))
-    try:
-        tempr[0, :] = r_boxes[:] if len(r_boxes.shape) == 1 else r_boxes
-    except:
-        r_boxes = tempr[0, :] if len(r_boxes.shape) == 1 else r_boxes
-    try:
-        tempe[0, :] = e_boxes[:] if len(e_boxes.shape) == 1 else e_boxes
-    except:
-        e_boxes = tempe[0, :] if len(e_boxes.shape) == 1 else e_boxes
-    r_boxes = tempr if len(r_boxes.shape) == 1 else r_boxes
-    e_boxes = tempe if len(e_boxes.shape) == 1 else e_boxes
-    acc = (np.dot(np.transpose(r_boxes[:, 2]*factor), r_boxes[:, 3]*factor))/((np.dot(np.transpose(e_boxes[:, 2]), e_boxes[:, 3])))
-    if np.isnan(acc) or acc==float("inf"):
-        acc=1
-    print("Num faces accuracy", acc)
-    return acc
 
 def clean_result(result):
-    #r_boxes = np.array([np.array(r['box']) for r in result])
     if len(result) == 0:
         return []
     cleaned_result = []
-    #cleaned_result += [result[0]]
     count = 0
-    #if len(result) == 1:
-    #    return cleaned_result
-    for single_box in result[0:]:
+    for single_box in result:
         overlap = 0.0
         for i in range(count):
             temp = bb_intersection_over_union(single_box['box'], cleaned_result[i]['box'])
@@ -332,7 +296,7 @@ def clean_result(result):
                 pos = i
         if overlap > 0.4 and single_box['confidence'] > cleaned_result[pos]['confidence']:
             cleaned_result[pos] = [single_box]
-        elif overlap < 0.4 and single_box['confidence'] > 0.4:
+        elif (overlap < 0.4) and (single_box['confidence'] > 0.4):
             cleaned_result += [single_box]
             count += 1
     return cleaned_result
