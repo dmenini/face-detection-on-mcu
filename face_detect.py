@@ -70,13 +70,13 @@ def main():
             continue
         image = hdf5_load(val_dict[i]['h5_path'])
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        image, factor = downscale(image)
-        result = detector.detect_faces(image)
+        image_ds, factor = downscale(image)
+        result = detector.detect_faces(image_ds)
         result = clean_result(result)
         result_matrix = face_metric3(result, expected, result_matrix)
         acc.append(face_metric1(result, expected, factor, image.shape[0], image.shape[1]))
-        # plot_box(image1, result, color='cyan', debug=False, show=False)
-        # plot_box(image, expected, color='r', debug=False)
+        plot_box(image_ds, result, color='cyan', debug=False, show=False)
+        plot_box(image, expected, color='r', debug=False)
     print("Pixel metric accuracy", np.mean(np.array(acc)))
 
     # Plot result matrix
