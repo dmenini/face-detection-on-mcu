@@ -130,7 +130,10 @@ class NetworkFactory:
 
         p_net.set_weights(weights['pnet'])
         r_net.set_weights(weights['rnet'])
-        o_net.set_weights(weights['onet'])
+        #o_net.set_weights(weights['onet'])
+
+        p_net.save_weights("p_net.h5")
+        r_net.save_weights("r_net.h5")
 
         return p_net, r_net, o_net
 

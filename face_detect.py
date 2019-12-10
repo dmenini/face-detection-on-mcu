@@ -74,9 +74,9 @@ def main():
         result = detector.detect_faces(image_ds)
         result = clean_result(result)
         result_matrix = face_metric3(result, expected, result_matrix)
-        acc.append(face_metric1(result, expected, factor, image.shape[0], image.shape[1]))
-        plot_box(image_ds, result, color='cyan', debug=False, show=False)
-        plot_box(image, expected, color='r', debug=False)
+        acc.append(face_metric1(result, expected, factor, image_ds.shape[0], image_ds.shape[1]))
+        #plot_box(image_ds, result, color='cyan', debug=False, show=False)
+        #plot_box(image, expected, color='r', debug=False)
     print("Pixel metric accuracy", np.mean(np.array(acc)))
 
     # Plot result matrix
