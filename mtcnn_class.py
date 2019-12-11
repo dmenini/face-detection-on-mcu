@@ -293,7 +293,7 @@ class MTCNN(object):
 
         scales = self.__compute_scale_pyramid(m, min_layer)
 
-        stages = [self.__stage1, self.__stage2]
+        stages = [self.__stage1]
         result = [scales, stage_status]
 
         # We pipe here each of the stages

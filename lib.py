@@ -138,7 +138,7 @@ def filter_box(data_dict, box_size, debug=False):
         m_dim = np.amax(d['shape'])
         print("Path: ", d['h5_path']) if debug else None
         print("Before: ", d['n_faces']) if debug else None
-        d['labels'] = [label for label in d['labels'] if (label['box'][2]*label['box'][3]) > box_size * m_dim / 250]
+        d['labels'] = [label for label in d['labels'] if (label['box'][2]*label['box'][3]) > box_size * m_dim / 80]
         d['n_faces'] = len(d['labels'])
         print("After: ", d['n_faces']) if debug else None
         if d['n_faces'] == 0:
@@ -163,10 +163,10 @@ def heights_description(data_dict):
 
 def downscale(image):
     h, w, _ = image.shape
-    max_size = 250
+    max_size = 80
     rescaling_factor = np.amax([h, w]) / max_size
     factor = np.amin([h, w]) / np.amax([h, w])
-    image = cv2.GaussianBlur(image, (3, 3), 0)
+    image = cv2.GaussianBlur(image, (5, 5), 0)
     if w == np.amax([h, w]):
         image = cv2.resize(image, (max_size, int(max_size*factor)))
     else:
@@ -296,7 +296,7 @@ def clean_result(result):
                 pos = i
         if overlap > 0.4 and single_box['confidence'] > cleaned_result[pos]['confidence']:
             cleaned_result[pos] = [single_box]
-        elif (overlap < 0.4) and (single_box['confidence'] > 0.4):
+        elif (overlap < 0.4) and (single_box['confidence'] > 0.99):
             cleaned_result += [single_box]
             count += 1
     return cleaned_result

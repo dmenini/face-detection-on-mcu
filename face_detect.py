@@ -63,7 +63,7 @@ def main():
 
     acc = []
     result_matrix = np.zeros((11, 11))
-    detector = MTCNN(min_face_size=12, scale_factor=0.36)
+    detector = MTCNN(min_face_size=12, scale_factor=0.5)
     for i in range(0, len(val_dict[:])):
         expected = val_dict[i]['labels']
         if len(expected) > 7 or len(expected) == 0:
