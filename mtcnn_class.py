@@ -299,6 +299,7 @@ class MTCNN(object):
         # We pipe here each of the stages
         for stage in stages:
             result = stage(img, result[0], result[1])
+            print(result)
 
         [total_boxes, points] = result
 

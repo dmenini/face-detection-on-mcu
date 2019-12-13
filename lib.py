@@ -138,7 +138,7 @@ def filter_box(data_dict, box_size, debug=False):
         m_dim = np.amax(d['shape'])
         print("Path: ", d['h5_path']) if debug else None
         print("Before: ", d['n_faces']) if debug else None
-        d['labels'] = [label for label in d['labels'] if (label['box'][2]*label['box'][3]) > box_size * m_dim / 80]
+        d['labels'] = [label for label in d['labels'] if (label['box'][2]*label['box'][3]) > box_size * m_dim / 90]
         d['n_faces'] = len(d['labels'])
         print("After: ", d['n_faces']) if debug else None
         if d['n_faces'] == 0:
@@ -163,7 +163,7 @@ def heights_description(data_dict):
 
 def downscale(image):
     h, w, _ = image.shape
-    max_size = 80
+    max_size = 90
     rescaling_factor = np.amax([h, w]) / max_size
     factor = np.amin([h, w]) / np.amax([h, w])
     image = cv2.GaussianBlur(image, (5, 5), 0)
@@ -268,7 +268,7 @@ def bb_intersection_over_union(boxA, boxB):
     # by the sum of prediction + ground-truth areas - the intersection area
     iou = interArea / float(boxAArea + boxBArea - interArea)
 
-    if interArea / boxAArea > 0.5 or interArea / boxBArea > 0.5:
+    if interArea / boxAArea > 0.02 or interArea / boxBArea > 0.02:
         iou = 0.51
 
     return iou
@@ -294,13 +294,151 @@ def clean_result(result):
             if temp > overlap:
                 overlap = temp
                 pos = i
-        if overlap > 0.4 and single_box['confidence'] > cleaned_result[pos]['confidence']:
+        if overlap > 0.5 and single_box['confidence'] > cleaned_result[pos]['confidence']:
             cleaned_result[pos] = [single_box]
-        elif (overlap < 0.4) and (single_box['confidence'] > 0.99):
+        elif (overlap < 0.5) and (single_box['confidence'] > 0.80):
             cleaned_result += [single_box]
             count += 1
     return cleaned_result
 
+def generate_bb(imap, reg, scale, t=0.96):
+
+    # use heatmap to generate bounding boxes
+    stride = 2
+    cellsize = 12
+
+    imap = np.transpose(imap)
+    dx1 = np.transpose(reg[:, :, 0])
+    dy1 = np.transpose(reg[:, :, 1])
+    dx2 = np.transpose(reg[:, :, 2])
+    dy2 = np.transpose(reg[:, :, 3])
+
+    y, x = np.where(imap >= t)
+
+    if y.shape[0] == 1:
+        dx1 = np.flipud(dx1)
+        dy1 = np.flipud(dy1)
+        dx2 = np.flipud(dx2)
+        dy2 = np.flipud(dy2)
+
+    score = imap[(y, x)]
+    reg = np.transpose(np.vstack([dx1[(y, x)], dy1[(y, x)], dx2[(y, x)], dy2[(y, x)]]))
+
+    if reg.size == 0:
+        reg = np.empty(shape=(0, 3))
+
+    bb = np.transpose(np.vstack([y, x]))
+
+    q1 = np.fix((stride * bb + 1) / scale)
+    q2 = np.fix((stride * bb + cellsize) / scale)
+    boundingbox = np.hstack([q1, q2, np.expand_dims(score, 1), reg])
+
+    return boundingbox
+
+def nms(boxes, threshold, method):
+    """
+    Non Maximum Suppression.
+    :param boxes: np array with bounding boxes.
+    :param threshold:
+    :param method: NMS method to apply. Available values ('Min', 'Union')
+    :return:
+    """
+    if boxes.size == 0:
+        return np.empty((0, 3))
+
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 2]
+    y2 = boxes[:, 3]
+    s = boxes[:, 4]
+
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+    sorted_s = np.argsort(s)
+
+    pick = np.zeros_like(s, dtype=np.int16)
+    counter = 0
+    while sorted_s.size > 0:
+        i = sorted_s[-1]
+        pick[counter] = i
+        counter += 1
+        idx = sorted_s[0:-1]
+
+        xx1 = np.maximum(x1[i], x1[idx])
+        yy1 = np.maximum(y1[i], y1[idx])
+        xx2 = np.minimum(x2[i], x2[idx])
+        yy2 = np.minimum(y2[i], y2[idx])
+
+        w = np.maximum(0.0, xx2 - xx1 + 1)
+        h = np.maximum(0.0, yy2 - yy1 + 1)
+
+        inter = w * h
+
+        if method is 'Min':
+            o = inter / np.minimum(area[i], area[idx])
+        else:
+            o = inter / (area[i] + area[idx] - inter)
+
+        sorted_s = sorted_s[np.where(o <= threshold)]
+
+    pick = pick[0:counter]
+
+    return pick
+
+def create_boxes(partial, scale, total_boxes):
+    out0 = np.transpose(partial[0], (0, 1, 2, 3))
+    out1 = np.transpose(partial[1], (0, 1, 2, 3))
+    bounding_boxes = generate_bb(out1[0, :, :, 1].copy(),
+            out0[0, :, :, :].copy(), scale)
+    print(bounding_boxes.shape)
+    pick = nms(bounding_boxes.copy(), 0.5, 'Union')
+    if bounding_boxes.size > 0 and pick.size > 0:
+        boxes = bounding_boxes[pick, :]
+        total_boxes = np.append(total_boxes, boxes, axis=0)
+    return total_boxes
+
+def rerec(bbox):
+    # convert bbox to square
+    height = bbox[:, 3] - bbox[:, 1]
+    width = bbox[:, 2] - bbox[:, 0]
+    max_side_length = np.maximum(width, height)
+    bbox[:, 0] = bbox[:, 0] + width * 0.5 - max_side_length * 0.5
+    bbox[:, 1] = bbox[:, 1] + height * 0.5 - max_side_length * 0.5
+    bbox[:, 2:4] = bbox[:, 0:2] + np.transpose(np.tile(max_side_length, (2, 1)))
+    return bbox
+
+def manage_result(complete_list):
+    total_boxes = np.empty((0, 9))
+    total_boxes = create_boxes(complete_list[0:2], scale=1.0, total_boxes=total_boxes)
+    total_boxes = create_boxes(complete_list[2:4], scale=0.5, total_boxes=total_boxes)
+    total_boxes = create_boxes(complete_list[4:6], scale=0.25, total_boxes=total_boxes)
+    numboxes = total_boxes.shape[0]
+
+    if numboxes > 0:
+        pick = nms(total_boxes.copy(), 0.7, 'Union')
+        total_boxes = total_boxes[pick, :]
+
+        regw = total_boxes[:, 2] - total_boxes[:, 0]
+        regh = total_boxes[:, 3] - total_boxes[:, 1]
+
+        qq1 = total_boxes[:, 0] + total_boxes[:, 5] * regw
+        qq2 = total_boxes[:, 1] + total_boxes[:, 6] * regh
+        qq3 = total_boxes[:, 2] + total_boxes[:, 7] * regw
+        qq4 = total_boxes[:, 3] + total_boxes[:, 8] * regh
+
+        total_boxes = np.transpose(np.vstack([qq1, qq2, qq3, qq4, total_boxes[:, 4]]))
+        total_boxes = rerec(total_boxes.copy())
+
+        total_boxes[:, 0:4] = np.fix(total_boxes[:, 0:4]).astype(np.int32)
+
+    bounding_boxes = []
+
+    for bounding_box in total_boxes:
+        bounding_boxes.append({
+            'box': [int(bounding_box[0]), int(bounding_box[1]),
+                    int(bounding_box[2] - bounding_box[0]), int(bounding_box[3] - bounding_box[1])],
+            'confidence': bounding_box[-1]})
+
+    return bounding_boxes
 
 
 

@@ -9,6 +9,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
+from tensorflow.keras.models import load_model
 
 # config = ConfigProto()
 # config.gpu_options.allow_growth = True
@@ -60,7 +61,7 @@ def main():
 
     print("Final train images: ", len(train_dict))
     print("Final val images: ", len(val_dict))
-
+    p_net = load_model('./model/p_net.h5')
     acc = []
     result_matrix = np.zeros((11, 11))
     detector = MTCNN(min_face_size=12, scale_factor=0.5)
@@ -71,17 +72,28 @@ def main():
         image = hdf5_load(val_dict[i]['h5_path'])
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         image_ds, factor = downscale(image)
-        result = detector.detect_faces(image_ds)
+        if image_ds.shape[1]>70:
+            continue
+        image_ds = cv2.copyMakeBorder(image_ds, top=(90-image_ds.shape[0])//2, bottom=(91-image_ds.shape[0])//2, left=(70-image_ds.shape[1])//2, right=(71-image_ds.shape[1])//2, borderType=cv2.BORDER_REPLICATE)
+        image_ds1 = np.expand_dims(image_ds, axis=0)
+        image_ds1 = (image_ds1 - 127.5) / 128.0
+        complete_list = p_net.predict(image_ds1)
+        result = manage_result(complete_list)
+        #result = detector.detect_faces(image_ds)
         result = clean_result(result)
         result_matrix = face_metric3(result, expected, result_matrix)
         acc.append(face_metric1(result, expected, factor, image_ds.shape[0], image_ds.shape[1]))
-        #plot_box(image_ds, result, color='cyan', debug=False, show=False)
+        print(image_ds.shape, image.shape)
+        plot_box(image_ds, result, color='cyan', debug=False, show=True)
         #plot_box(image, expected, color='r', debug=False)
     print("Pixel metric accuracy", np.mean(np.array(acc)))
 
     # Plot result matrix
     result_matrix = result_matrix / np.tile((np.sum(result_matrix, axis=0).astype(float)+0.001), (11, 1))
-    sn.heatmap(result_matrix, annot=True)
+    for i in range(result_matrix.shape[1]-1):
+        result_matrix[i, i] = result_matrix[i-1, i] + result_matrix[i, i] + result_matrix[i+1, i]
+    result_m = result_matrix[1:6, 1:6]
+    sn.heatmap(result_m, annot=True)
     plt.show()
 
 
