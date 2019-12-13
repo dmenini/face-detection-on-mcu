@@ -9,7 +9,6 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 n_faces = 7
 max_size = 90
-scale_factor = 0.5
 confidence = 0.80
 
 
@@ -60,19 +59,19 @@ def main():
 
     acc = []
     result_matrix = np.zeros((11, 11))      # safe value
-    detector = MTCNN(min_face_size=12, scale_factor=scale_factor)
+    detector = MTCNN(min_face_size=12, scale_factor=0.5, steps_threshold=[0.95, 0.7, 0.7])
 
     for i in range(0, len(val_dict[:])):
         expected = val_dict[i]['labels']
         if len(expected) > n_faces or len(expected) == 0:
             continue
         image = hdf5_load(val_dict[i]['h5_path'])
-        image_ds, factor = downscale(image)
+        image_ds, factor = downscale(image, max_size=90)
         result = detector.detect_faces(image_ds)
         result = clean_result(result, conf_t=confidence)
         result_matrix = n_faces_matrix(result, expected, result_matrix)
         acc.append(face_pixel_metric(result, expected, factor, image_ds.shape[0], image_ds.shape[1]))
-        plot_comparison(image, image_ds, expected, result, color_e='r', color_r='cyan', line=1, pause=1.5)
+        # plot_comparison(image, image_ds, expected, result, color_e='r', color_r='cyan', line=1, pause=1.5)
 
     # =====================================================================
     #                          PLOT RESULTS

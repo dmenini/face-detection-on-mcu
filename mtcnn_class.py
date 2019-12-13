@@ -76,7 +76,7 @@ class MTCNN(object):
         :param scale_factor: scale factor
         """
         if steps_threshold is None:
-            steps_threshold = [0.95, 0.7, 0.7]      # 0.6 before
+            steps_threshold = [0.6, 0.7, 0.7]
 
         if weights_file is None:
             weights_file = pkg_resources.resource_stream('mtcnn', 'data/mtcnn_weights.npy')
@@ -299,7 +299,6 @@ class MTCNN(object):
         # We pipe here each of the stages
         for stage in stages:
             result = stage(img, result[0], result[1])
-            print(result)
 
         [total_boxes, points] = result
 

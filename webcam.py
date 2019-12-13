@@ -5,13 +5,13 @@ from mtcnn_class import *
 
 def main():
     video_capture = cv2.VideoCapture(0)
-    detector = MTCNN(min_face_size=12, scale_factor=0.5)
+    detector = MTCNN(min_face_size=12, scale_factor=0.5, steps_threshold=[0.95, 0.7, 0.7])
 
     while True:
         ret, frame = video_capture.read()
-        frame, factor = downscale(frame)
+        frame, factor = downscale(frame, max_size=90)
         result = detector.detect_faces(frame)
-        result = clean_result(result)
+        result = clean_result(result, conf_t=0.80)
         for box in result:
             (x, y, w, h) = box['box']
             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 1)

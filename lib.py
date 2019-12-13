@@ -204,23 +204,23 @@ def downscale(image, max_size=90):
 
 
 def image_padding_max_ver(image, max_size=90):
-	second_size = max_size - 20 
-	top = (max_size - image.shape[0]) // 2
-	bottom = (max_size + 1 - image.shape[0]) // 2
-	left = (second_size - image.shape[1]) // 2
-	right = (second_size + 1 - image.shape[1]) // 2
-	image = cv2.copyMakeBorder(image, top=top, bottom=bottom, left=left, right=right, borderType=cv2.BORDER_REPLICATE)
-	return image
+    second_size = max_size - 20
+    top = (max_size - image.shape[0]) // 2
+    bottom = (max_size + 1 - image.shape[0]) // 2
+    left = (second_size - image.shape[1]) // 2
+    right = (second_size + 1 - image.shape[1]) // 2
+    image = cv2.copyMakeBorder(image, top=top, bottom=bottom, left=left, right=right, borderType=cv2.BORDER_REPLICATE)
+    return image
 
 
 def image_padding_max_hor(image, max_size=90):
-	second_size = max_size - 20 
-	top = (second_size - image.shape[0]) // 2
-	bottom = (second_size + 1 - image.shape[0]) // 2
-	left = (max_size - image.shape[1]) // 2
-	right = (max_size + 1 - image.shape[1]) // 2
-	image = cv2.copyMakeBorder(image, top=top, bottom=bottom, left=left, right=right, borderType=cv2.BORDER_REPLICATE)
-	return image
+    second_size = max_size - 20
+    top = (second_size - image.shape[0]) // 2
+    bottom = (second_size + 1 - image.shape[0]) // 2
+    left = (max_size - image.shape[1]) // 2
+    right = (max_size + 1 - image.shape[1]) // 2
+    image = cv2.copyMakeBorder(image, top=top, bottom=bottom, left=left, right=right, borderType=cv2.BORDER_REPLICATE)
+    return image
 
 
 def bb_intersection_over_union(boxA, boxB, mode='metric'):
