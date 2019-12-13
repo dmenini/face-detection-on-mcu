@@ -76,7 +76,7 @@ class MTCNN(object):
         :param scale_factor: scale factor
         """
         if steps_threshold is None:
-            steps_threshold = [0.6, 0.7, 0.7]
+            steps_threshold = [0.95, 0.7, 0.7]      # 0.6 before
 
         if weights_file is None:
             weights_file = pkg_resources.resource_stream('mtcnn', 'data/mtcnn_weights.npy')
@@ -339,7 +339,6 @@ class MTCNN(object):
             img_y = np.transpose(img_x, (0, 2, 1, 3))
 
             out = self._pnet.predict(img_y)
-
             out0 = np.transpose(out[0], (0, 2, 1, 3))
             out1 = np.transpose(out[1], (0, 2, 1, 3))
 
