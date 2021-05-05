@@ -1,6 +1,7 @@
 import cv2
 from lib import *
 from mtcnn_class import *
+from mtcnn.mtcnn import MTCNN
 
 
 def main():
